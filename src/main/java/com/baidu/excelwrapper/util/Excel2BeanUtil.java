@@ -1,0 +1,282 @@
+package com.baidu.excelwrapper.util;
+
+
+import com.baidu.excelwrapper.annotation.ExcelWrap;
+import com.baidu.excelwrapper.model.ExcelBean;
+import com.baidu.excelwrapper.model.FieldWrapper;
+
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Created by zhangheng07 on 2014/9/1.
+ */
+public class Excel2BeanUtil {
+
+    public static <T> List<T> getBeanList(File excelFile, Class<? extends ExcelBean> clazz) throws Exception {
+        List<T> beanList = new ArrayList<T>();
+        Workbook book = WorkbookFactory.create(new FileInputStream(excelFile.getPath()));
+        Sheet sheet = book.getSheetAt(0);
+        Field[] fields = clazz.getDeclaredFields();
+        Map<String, FieldWrapper> titleConfig = new HashMap<String, FieldWrapper>();
+        checkTitle(sheet, fields, titleConfig);
+        assembleBean(clazz, beanList, sheet, titleConfig);
+        return beanList;
+    }
+
+    private static <T> void assembleBean(Class<? extends ExcelBean> clazz, List<T> beanList, Sheet sheet,
+                                         Map<String, FieldWrapper> titleConfig) throws InstantiationException, IllegalAccessException, InvocationTargetException {
+        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            if (sheet.getRow(i) == null) {
+                continue;
+            }
+            Object obj = clazz.newInstance();
+            if (filterBlank(sheet, i)) continue;
+
+            BeanUtils.setProperty(obj, "excelIndex", i);  // set the value of excelIndex from ExcelBean
+            for (int j = 0; j < sheet.getRow(0).getPhysicalNumberOfCells(); j++) {
+                String title = sheet.getRow(0).getCell(j).toString();
+                Cell cell = sheet.getRow(i).getCell(j);
+                FieldWrapper fieldWrapper = titleConfig.get(title);
+                StringBuffer errors = new StringBuffer();
+                if (fieldWrapper == null) {
+                    continue;
+                }
+                if (cell == null || StringUtils.isBlank(cell.toString())) {
+                    if (!fieldWrapper.getE().nullable()) {
+                        errors.append(fieldWrapper.getE().title()).append("不能为空;");
+                    }
+                    continue;
+                }
+                String fieldName = fieldWrapper.getF().getName();
+                switch (fieldWrapper.getE().dataType()) {
+                    case BOOLEAN:
+                        setBoolean(obj, title, cell, fieldWrapper, errors, fieldName);
+                        break;
+                    case STRING:
+                        setString(obj, title, cell, fieldWrapper, errors, fieldName);
+                        break;
+                    case INTEGER:
+                        setInteger(obj, title, cell, errors, fieldName);
+                        break;
+                    case FLOAT:
+                        setFloat(obj, title, cell, errors, fieldName);
+                        break;
+                    case DATE:
+                        setDate(obj, title, cell, fieldWrapper, errors, fieldName);
+                        break;
+                    case BIGDECIMAL:
+                        setBigDecimal(obj, title, cell, errors, fieldName);
+                        break;
+                    case DOUBLE:
+                        setDouble(obj, title, cell, errors, fieldName);
+                        break;
+                    case LONG:
+                        setLong(obj, title, cell, errors, fieldName);
+                        break;
+                }
+            }
+            beanList.add((T) obj);
+        }
+    }
+
+    private static void setString(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) {
+        try {
+            String value = cell.getStringCellValue();
+            if (fieldWrapper.getE().isMulti()) {
+                String separator = fieldWrapper.getE().separator();
+                value = value.replace("(", "（").replace(")", "）");
+                String[] values = value.split(separator);
+                String[] range = fieldWrapper.getE().multiValue();
+
+                for (String valueExcel : values) {
+                    for (int k = 0; k < range.length; k++) {
+                        if (range[k].trim().equals(valueExcel.trim())) {
+                            break;
+                        }
+                        if (k == range.length - 1) {
+                            errors.append(title
+                            ).append("未找到可选值 (").append(valueExcel).append(");");
+                        }
+                    }
+                }
+                if (StringUtils.isNotBlank(errors.toString())) {
+                    return;
+                }
+
+            } else if (fieldWrapper.getE().isSinglefixed()) {
+                String[] range = fieldWrapper.getE().multiValue();
+                for (int k = 0; k < range.length; k++) {
+                    if (range[k].trim().equals(value.trim())) {
+                        break;
+                    }
+                    if (k == range.length - 1) {
+                        errors.append(title).append("未找到可选值 (").append(value).append(");");
+                    }
+                }
+                if (StringUtils.isNotBlank(errors.toString())) {
+                    return;
+                }
+
+            }
+            BeanUtils.setProperty(obj, fieldName, value);
+        } catch (Exception e) {
+            errors.append(title).append("转换成文本类型出错").append(cell.toString()).append(";");
+        }
+    }
+
+    /**
+     * filter the line which has no available data
+     *
+     * @param sheet
+     * @param i
+     * @return
+     */
+    private static boolean filterBlank(Sheet sheet, int i) {
+        boolean isAllBlank = true;
+        for (int j = 0; j < sheet.getRow(0).getPhysicalNumberOfCells(); j++) {
+            Cell cell = sheet.getRow(i).getCell(j);
+            if (cell != null) {
+                if (StringUtils.isNotBlank(cell.toString())) {
+                    isAllBlank = false;
+                    break;
+                }
+            }
+        }
+        if (isAllBlank) {
+            return true;
+        }
+        return false;
+    }
+
+    private static void checkTitle(Sheet sheet, Field[] fields, Map<String, FieldWrapper> titleConfig) throws Exception {
+        for (Field f : fields) {
+            ExcelWrap wrap = f.getAnnotation(ExcelWrap.class);
+            FieldWrapper fieldWrapper = new FieldWrapper(f, wrap);
+
+            if (wrap != null) {
+                for (int j = 0; j < sheet.getRow(0).getPhysicalNumberOfCells(); j++) {
+                    String excelTitleName = sheet.getRow(0).getCell(j).getStringCellValue().trim();
+                    if (wrap.title().equals(excelTitleName)) {
+                        titleConfig.put(wrap.title(), fieldWrapper);
+                        break;
+                    }
+                    if (j == sheet.getRow(0).getPhysicalNumberOfCells() - 1) {
+                        throw new Exception("未找到标题 " + wrap.title());
+                    }
+
+                }
+            }
+        }
+    }
+
+
+    private static void setBoolean(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) {
+        String value = cell.getStringCellValue();
+        try {
+            if (fieldWrapper.getE().trueWord().equals(value)) {
+                BeanUtils.setProperty(obj, fieldName, true);
+            } else if (fieldWrapper.getE().falseWord().equals(value)) {
+                BeanUtils.setProperty(obj, fieldName, false);
+            } else {
+                errors.append(title).append("未能映射到布尔值").append(cell.getStringCellValue()).append(";");
+            }
+        } catch (Exception e) {
+            errors.append(title).append("转换成布尔类型出错").append(cell.getStringCellValue()).append(";");
+        }
+    }
+
+    private static void setDate(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) {
+        try {
+            if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
+                BeanUtils.setProperty(obj, fieldName, cell.getDateCellValue());
+            } else {
+                SimpleDateFormat sdf = new SimpleDateFormat(fieldWrapper.getE().dateFormat());
+                BeanUtils.setProperty(obj, fieldName, sdf.parse(cell.getStringCellValue()));
+            }
+        } catch (Exception e) {
+            errors.append(title).append("转换成日期类型出错"
+            ).append(cell.toString()).append(";");
+        }
+    }
+
+    private static void setBigDecimal(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
+        try {
+            if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
+                BeanUtils.setProperty(obj, fieldName, new BigDecimal(cell.getNumericCellValue()));
+            } else {
+                BeanUtils.setProperty(obj, fieldName, new BigDecimal(cell.getStringCellValue()));
+            }
+        } catch (Exception e) {
+            errors.append(title).append("转换成精确数值类型出错"
+                    + cell.toString()).append(";");
+        }
+    }
+
+    private static void setDouble(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
+        try {
+            if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
+                BeanUtils.setProperty(obj, fieldName, cell.getNumericCellValue());
+            } else {
+                BeanUtils.setProperty(obj, fieldName, Double.parseDouble(cell.getStringCellValue()));
+            }
+        } catch (Exception e) {
+            errors.append(title).append("转换成浮点类型出错"
+            ).append(cell.toString()).append(";");
+        }
+    }
+
+    private static void setFloat(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
+        try {
+            if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
+                BeanUtils.setProperty(obj, fieldName, cell.getNumericCellValue());
+            } else {
+                BeanUtils.setProperty(obj, fieldName, Float.parseFloat(cell.getStringCellValue()));
+            }
+        } catch (Exception e) {
+            errors.append(title).append("转换成浮点类型出错"
+            ).append(cell.toString()).append(";");
+        }
+    }
+
+    private static void setInteger(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
+        try {
+            if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
+                BeanUtils.setProperty(obj, fieldName, cell.getNumericCellValue());
+            } else {
+                BeanUtils.setProperty(obj, fieldName, Integer.parseInt(cell.getStringCellValue()));
+            }
+        } catch (Exception e) {
+            errors.append(title).append("转换成整数类型出错"
+            ).append(cell.toString()).append(";");
+        }
+    }
+
+    private static void setLong(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
+        try {
+            if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
+                BeanUtils.setProperty(obj, fieldName, cell.getNumericCellValue());
+            } else {
+                BeanUtils.setProperty(obj, fieldName, Long.parseLong(cell.getStringCellValue()));
+            }
+        } catch (Exception e) {
+            errors.append(title).append("转换成整数类型出错"
+            ).append(cell.toString()).append(";");
+        }
+    }
+}
