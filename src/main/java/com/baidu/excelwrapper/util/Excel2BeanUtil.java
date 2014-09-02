@@ -60,6 +60,7 @@ public class Excel2BeanUtil {
                 if (cell == null || StringUtils.isBlank(cell.toString())) {
                     if (!fieldWrapper.getE().nullable()) {
                         errors.append(fieldWrapper.getE().title()).append("不能为空;");
+                        BeanUtils.setProperty(obj, "errorMessage", errors);
                     }
                     continue;
                 }
@@ -90,6 +91,7 @@ public class Excel2BeanUtil {
                         setLong(obj, title, cell, errors, fieldName);
                         break;
                 }
+                BeanUtils.setProperty(obj, "errorMessage", errors);
             }
             beanList.add((T) obj);
         }

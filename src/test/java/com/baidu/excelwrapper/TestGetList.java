@@ -15,7 +15,7 @@ import java.util.List;
 public class TestGetList {
     @Test
     public void getList() {
-        File excelFile = new File("D:\\person.xlsx");
+        File excelFile = new File(getClass().getResource("/person.xlsx").getPath());
         try {
             List<Person> modelList = Excel2BeanUtil.getBeanList(excelFile, Person.class);
             for(int i = 0;i<modelList.size();i++){

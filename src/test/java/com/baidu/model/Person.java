@@ -17,6 +17,16 @@ public class Person extends ExcelBean {
     private String gender;
     @ExcelWrap(title="手机",isMulti = true, multiValue = {"IPhone","HTC","MX"},separator ="~")
     private String phones;
+    @ExcelWrap(title="婚否",nullable = false,dataType= TransferType.BOOLEAN, trueWord = "已婚",falseWord = "未婚")
+    private Boolean isMarried;
+
+    public Boolean getIsMarried() {
+        return isMarried;
+    }
+
+    public void setIsMarried(Boolean isMarried) {
+        this.isMarried = isMarried;
+    }
 
     public String getName() {
         return name;

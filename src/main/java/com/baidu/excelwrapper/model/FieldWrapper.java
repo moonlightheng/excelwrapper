@@ -22,15 +22,9 @@ public class FieldWrapper {
         return f;
     }
 
-    public void setF(Field f) {
-        this.f = f;
-    }
 
     public ExcelWrap getE() {
         return e;
     }
 
-    public void setE(ExcelWrap e) {
-        this.e = e;
-    }
 }
