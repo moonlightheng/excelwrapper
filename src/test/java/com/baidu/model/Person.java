@@ -13,12 +13,13 @@ public class Person extends ExcelBean {
     private String name;
     @ExcelWrap(title="年龄",dataType= TransferType.INTEGER ,defaultValue="18")
     private Integer age;
-    @ExcelWrap(title="性别",isSinglefixed = true, multiValue = {"男","女"},separator ="|")
+    @ExcelWrap(title="性别", dataType= TransferType.SINGLE_SELECT, multiValue = {"男","女"},separator ="|")
     private String gender;
-    @ExcelWrap(title="手机",isMulti = true, multiValue = {"IPhone","HTC","MX"},separator ="~")
+    @ExcelWrap(title="手机",dataType= TransferType.MULTI_SELECT,multiValue = {"IPhone","HTC","MX"},separator ="~")
     private String phones;
     @ExcelWrap(title="婚否",nullable = false,dataType= TransferType.BOOLEAN, trueWord = "已婚",falseWord = "未婚")
     private Boolean isMarried;
+
 
     public Boolean getIsMarried() {
         return isMarried;

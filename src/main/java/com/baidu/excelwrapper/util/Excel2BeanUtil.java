@@ -46,7 +46,9 @@ public class Excel2BeanUtil {
                 continue;
             }
             Object obj = clazz.newInstance();
-            if (filterBlank(sheet, i)) continue;
+            if (filterBlank(sheet, i)) {
+                continue;
+            }
 
             BeanUtils.setProperty(obj, "excelIndex", i);  // set the value of excelIndex from ExcelBean
             for (int j = 0; j < sheet.getRow(0).getPhysicalNumberOfCells(); j++) {
@@ -70,7 +72,7 @@ public class Excel2BeanUtil {
                         setBoolean(obj, title, cell, fieldWrapper, errors, fieldName);
                         break;
                     case STRING:
-                        setString(obj, title, cell, fieldWrapper, errors, fieldName);
+                        setString(obj, title, cell, errors, fieldName);
                         break;
                     case INTEGER:
                         setInteger(obj, title, cell, errors, fieldName);
@@ -90,6 +92,15 @@ public class Excel2BeanUtil {
                     case LONG:
                         setLong(obj, title, cell, errors, fieldName);
                         break;
+                    case MULTI_SELECT:
+                        setMultiSelect(obj, title, cell, fieldWrapper, errors, fieldName);
+                        break;
+                    case SINGLE_SELECT:
+                        setSingleSelect(obj, title, cell, fieldWrapper, errors, fieldName);
+                        break;
+                    case LIST:
+                        setList(obj, title, cell, fieldWrapper, errors, fieldName);
+                        break;
                 }
                 BeanUtils.setProperty(obj, "errorMessage", errors);
             }
@@ -97,45 +108,72 @@ public class Excel2BeanUtil {
         }
     }
 
-    private static void setString(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) {
+    private static void setList(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) {
         try {
             String value = cell.getStringCellValue();
-            if (fieldWrapper.getE().isMulti()) {
-                String separator = fieldWrapper.getE().separator();
-                value = value.replace("(", "（").replace(")", "）");
-                String[] values = value.split(separator);
-                String[] range = fieldWrapper.getE().multiValue();
+            String[] values = value.split(fieldWrapper.getE().separator());
+            List<String> items = new ArrayList<String>();
+            for (String valueExcel : values) {
+                items.add(valueExcel);
+            }
+            BeanUtils.setProperty(obj, fieldName, items);
+        } catch (Exception e) {
+            errors.append(title).append("转换成列表出错").append(cell.toString()).append(";");
+        }
+        return;
+    }
 
-                for (String valueExcel : values) {
-                    for (int k = 0; k < range.length; k++) {
-                        if (range[k].trim().equals(valueExcel.trim())) {
-                            break;
-                        }
-                        if (k == range.length - 1) {
-                            errors.append(title
-                            ).append("未找到可选值 (").append(valueExcel).append(");");
-                        }
-                    }
-                }
-                if (StringUtils.isNotBlank(errors.toString())) {
-                    return;
-                }
+    private static void setMultiSelect(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) throws IllegalAccessException, InvocationTargetException {
+        try {
+            String value = cell.getStringCellValue();
+            String separator = fieldWrapper.getE().separator();
+            String[] values = value.split(separator);
+            String[] range = fieldWrapper.getE().multiValue();
 
-            } else if (fieldWrapper.getE().isSinglefixed()) {
-                String[] range = fieldWrapper.getE().multiValue();
+            for (String valueExcel : values) {
                 for (int k = 0; k < range.length; k++) {
-                    if (range[k].trim().equals(value.trim())) {
+                    if (range[k].trim().equals(valueExcel.trim())) {
                         break;
                     }
                     if (k == range.length - 1) {
-                        errors.append(title).append("未找到可选值 (").append(value).append(");");
+                        errors.append(title ).append("未找到可选值 (").append(valueExcel).append(");");
                     }
                 }
-                if (StringUtils.isNotBlank(errors.toString())) {
-                    return;
-                }
-
             }
+            if (StringUtils.isNotBlank(errors.toString())) {
+                return;
+            }
+            BeanUtils.setProperty(obj, fieldName, value);
+        } catch (Exception e) {
+            errors.append(title).append("转换多选值出错").append(cell.toString()).append(";");
+        }
+    }
+
+    private static void setSingleSelect(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) throws IllegalAccessException, InvocationTargetException {
+        try {
+            String value = cell.getStringCellValue();
+            String[] singleRange = fieldWrapper.getE().multiValue();
+            for (int k = 0; k < singleRange.length; k++) {
+                if (singleRange[k].trim().equals(value.trim())) {
+                    break;
+                }
+                if (k == singleRange.length - 1) {
+                    errors.append(title).append("未找到可选值 (").append(value).append(");");
+                }
+            }
+            if (StringUtils.isNotBlank(errors.toString())) {
+                return;
+            }
+            BeanUtils.setProperty(obj, fieldName, value);
+        } catch (Exception e) {
+            errors.append(title).append("转换单选值出错").append(cell.toString()).append(";");
+        }
+    }
+
+
+    private static void setString(Object obj, String title, Cell cell,  StringBuffer errors, String fieldName) {
+        try {
+            String value = cell.getStringCellValue();
             BeanUtils.setProperty(obj, fieldName, value);
         } catch (Exception e) {
             errors.append(title).append("转换成文本类型出错").append(cell.toString()).append(";");
@@ -146,13 +184,13 @@ public class Excel2BeanUtil {
      * filter the line which has no available data
      *
      * @param sheet
-     * @param i
+     * @param index
      * @return
      */
-    private static boolean filterBlank(Sheet sheet, int i) {
+    private static boolean filterBlank(Sheet sheet, int index) {
         boolean isAllBlank = true;
         for (int j = 0; j < sheet.getRow(0).getPhysicalNumberOfCells(); j++) {
-            Cell cell = sheet.getRow(i).getCell(j);
+            Cell cell = sheet.getRow(index).getCell(j);
             if (cell != null) {
                 if (StringUtils.isNotBlank(cell.toString())) {
                     isAllBlank = false;
@@ -160,10 +198,7 @@ public class Excel2BeanUtil {
                 }
             }
         }
-        if (isAllBlank) {
-            return true;
-        }
-        return false;
+        return isAllBlank;
     }
 
     private static void checkTitle(Sheet sheet, Field[] fields, Map<String, FieldWrapper> titleConfig) throws Exception {
@@ -225,8 +260,7 @@ public class Excel2BeanUtil {
                 BeanUtils.setProperty(obj, fieldName, new BigDecimal(cell.getStringCellValue()));
             }
         } catch (Exception e) {
-            errors.append(title).append("转换成精确数值类型出错"
-                    + cell.toString()).append(";");
+            errors.append(title).append("转换成精确数值类型出错").append(cell.toString()).append(";");
         }
     }
 
@@ -238,8 +272,7 @@ public class Excel2BeanUtil {
                 BeanUtils.setProperty(obj, fieldName, Double.parseDouble(cell.getStringCellValue()));
             }
         } catch (Exception e) {
-            errors.append(title).append("转换成浮点类型出错"
-            ).append(cell.toString()).append(";");
+            errors.append(title).append("转换成浮点类型出错").append(cell.toString()).append(";");
         }
     }
 
@@ -251,8 +284,7 @@ public class Excel2BeanUtil {
                 BeanUtils.setProperty(obj, fieldName, Float.parseFloat(cell.getStringCellValue()));
             }
         } catch (Exception e) {
-            errors.append(title).append("转换成浮点类型出错"
-            ).append(cell.toString()).append(";");
+            errors.append(title).append("转换成浮点类型出错").append(cell.toString()).append(";");
         }
     }
 
@@ -264,8 +296,7 @@ public class Excel2BeanUtil {
                 BeanUtils.setProperty(obj, fieldName, Integer.parseInt(cell.getStringCellValue()));
             }
         } catch (Exception e) {
-            errors.append(title).append("转换成整数类型出错"
-            ).append(cell.toString()).append(";");
+            errors.append(title).append("转换成整数类型出错").append(cell.toString()).append(";");
         }
     }
 
@@ -277,8 +308,7 @@ public class Excel2BeanUtil {
                 BeanUtils.setProperty(obj, fieldName, Long.parseLong(cell.getStringCellValue()));
             }
         } catch (Exception e) {
-            errors.append(title).append("转换成整数类型出错"
-            ).append(cell.toString()).append(";");
+            errors.append(title).append("转换成整数类型出错").append(cell.toString()).append(";");
         }
     }
 }
