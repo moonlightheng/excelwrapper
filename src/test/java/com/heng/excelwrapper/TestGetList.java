@@ -1,8 +1,8 @@
-package com.baidu.excelwrapper;
+package com.heng.excelwrapper;
 
-import com.baidu.excelwrapper.util.Excel2BeanUtil;
-import com.baidu.model.Person;
-import com.baidu.model.Student;
+import com.heng.excelwrapper.util.Excel2BeanUtil;
+import com.heng.test.model.Person;
+import com.heng.test.model.Student;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.junit.Test;
 

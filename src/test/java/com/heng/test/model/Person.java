@@ -1,8 +1,8 @@
-package com.baidu.model;
+package com.heng.test.model;
 
-import com.baidu.excelwrapper.annotation.ExcelWrap;
-import com.baidu.excelwrapper.constant.TransferType;
-import com.baidu.excelwrapper.model.ExcelBean;
+import com.heng.excelwrapper.annotation.ExcelWrap;
+import com.heng.excelwrapper.constant.TransferType;
+import com.heng.excelwrapper.model.ExcelBean;
 
 /**
  * Created by zhangheng07 on 2014/9/1.
@@ -13,7 +13,7 @@ public class Person extends ExcelBean {
     private String name;
     @ExcelWrap(title="年龄",dataType= TransferType.INTEGER ,defaultValue="18")
     private Integer age;
-    @ExcelWrap(title="性别", dataType= TransferType.SINGLE_SELECT, multiValue = {"男","女"},separator ="|")
+    @ExcelWrap(title="性别", dataType= TransferType.SINGLE_SELECT, multiValue = {"男","女"})
     private String gender;
     @ExcelWrap(title="手机",dataType= TransferType.MULTI_SELECT,multiValue = {"IPhone","HTC","MX"},separator ="~")
     private String phones;

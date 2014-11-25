@@ -1,13 +1,13 @@
-package com.baidu.excelwrapper.model;
+package com.heng.excelwrapper.model;
 
-import com.baidu.excelwrapper.annotation.ExcelWrap;
+import com.heng.excelwrapper.annotation.ExcelWrap;
 
 import java.lang.reflect.Field;
 
 /**
  * Created by zhangheng07 on 2014/9/2.
  */
-public class FieldWrapper {
+public class FieldWrapper implements Comparable<FieldWrapper>{
 
     private Field f;
 
@@ -27,4 +27,8 @@ public class FieldWrapper {
         return e;
     }
 
+    @Override
+    public int compareTo(FieldWrapper o) {
+        return this.getE().order()-o.getE().order();
+    }
 }

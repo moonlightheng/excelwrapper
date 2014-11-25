@@ -1,9 +1,9 @@
-package com.baidu.excelwrapper.util;
+package com.heng.excelwrapper.util;
 
 
-import com.baidu.excelwrapper.annotation.ExcelWrap;
-import com.baidu.excelwrapper.model.ExcelBean;
-import com.baidu.excelwrapper.model.FieldWrapper;
+import com.heng.excelwrapper.annotation.ExcelWrap;
+import com.heng.excelwrapper.model.ExcelBean;
+import com.heng.excelwrapper.model.FieldWrapper;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.StringUtils;
@@ -15,7 +15,6 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -40,7 +39,7 @@ public class Excel2BeanUtil {
     }
 
     private static <T> void assembleBean(Class<? extends ExcelBean> clazz, List<T> beanList, Sheet sheet,
-                                         Map<String, FieldWrapper> titleConfig) throws InstantiationException, IllegalAccessException, InvocationTargetException {
+                                         Map<String, FieldWrapper> titleConfig) throws Exception {
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             if (sheet.getRow(i) == null) {
                 continue;
@@ -69,37 +68,37 @@ public class Excel2BeanUtil {
                 String fieldName = fieldWrapper.getF().getName();
                 switch (fieldWrapper.getE().dataType()) {
                     case BOOLEAN:
-                        setBoolean(obj, title, cell, fieldWrapper, errors, fieldName);
+                        readBoolean(obj, title, cell, fieldWrapper, errors, fieldName);
                         break;
                     case STRING:
-                        setString(obj, title, cell, errors, fieldName);
+                        readString(obj, title, cell, errors, fieldName);
                         break;
                     case INTEGER:
-                        setInteger(obj, title, cell, errors, fieldName);
+                        readInteger(obj, title, cell, errors, fieldName);
                         break;
                     case FLOAT:
-                        setFloat(obj, title, cell, errors, fieldName);
+                        readFloat(obj, title, cell, errors, fieldName);
                         break;
                     case DATE:
-                        setDate(obj, title, cell, fieldWrapper, errors, fieldName);
+                        readDate(obj, title, cell, fieldWrapper, errors, fieldName);
                         break;
                     case BIGDECIMAL:
-                        setBigDecimal(obj, title, cell, errors, fieldName);
+                        readBigDecimal(obj, title, cell, errors, fieldName);
                         break;
                     case DOUBLE:
-                        setDouble(obj, title, cell, errors, fieldName);
+                        readDouble(obj, title, cell, errors, fieldName);
                         break;
                     case LONG:
-                        setLong(obj, title, cell, errors, fieldName);
+                        readLong(obj, title, cell, errors, fieldName);
                         break;
                     case MULTI_SELECT:
-                        setMultiSelect(obj, title, cell, fieldWrapper, errors, fieldName);
+                        readMultiSelect(obj, title, cell, fieldWrapper, errors, fieldName);
                         break;
                     case SINGLE_SELECT:
-                        setSingleSelect(obj, title, cell, fieldWrapper, errors, fieldName);
+                        readSingleSelect(obj, title, cell, fieldWrapper, errors, fieldName);
                         break;
                     case LIST:
-                        setList(obj, title, cell, fieldWrapper, errors, fieldName);
+                        readList(obj, title, cell, fieldWrapper, errors, fieldName);
                         break;
                 }
                 BeanUtils.setProperty(obj, "errorMessage", errors);
@@ -108,7 +107,7 @@ public class Excel2BeanUtil {
         }
     }
 
-    private static void setList(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) {
+    private static void readList(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) {
         try {
             String value = cell.getStringCellValue();
             String[] values = value.split(fieldWrapper.getE().separator());
@@ -123,7 +122,7 @@ public class Excel2BeanUtil {
         return;
     }
 
-    private static void setMultiSelect(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) throws IllegalAccessException, InvocationTargetException {
+    private static void readMultiSelect(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) throws Exception {
         try {
             String value = cell.getStringCellValue();
             String separator = fieldWrapper.getE().separator();
@@ -149,7 +148,7 @@ public class Excel2BeanUtil {
         }
     }
 
-    private static void setSingleSelect(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) throws IllegalAccessException, InvocationTargetException {
+    private static void readSingleSelect(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) throws Exception {
         try {
             String value = cell.getStringCellValue();
             String[] singleRange = fieldWrapper.getE().multiValue();
@@ -171,7 +170,7 @@ public class Excel2BeanUtil {
     }
 
 
-    private static void setString(Object obj, String title, Cell cell,  StringBuffer errors, String fieldName) {
+    private static void readString(Object obj, String title, Cell cell,  StringBuffer errors, String fieldName) {
         try {
             String value = cell.getStringCellValue();
             BeanUtils.setProperty(obj, fieldName, value);
@@ -223,7 +222,7 @@ public class Excel2BeanUtil {
     }
 
 
-    private static void setBoolean(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) {
+    private static void readBoolean(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) {
         String value = cell.getStringCellValue();
         try {
             if (fieldWrapper.getE().trueWord().equals(value)) {
@@ -238,7 +237,7 @@ public class Excel2BeanUtil {
         }
     }
 
-    private static void setDate(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) {
+    private static void readDate(Object obj, String title, Cell cell, FieldWrapper fieldWrapper, StringBuffer errors, String fieldName) {
         try {
             if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
                 BeanUtils.setProperty(obj, fieldName, cell.getDateCellValue());
@@ -252,7 +251,7 @@ public class Excel2BeanUtil {
         }
     }
 
-    private static void setBigDecimal(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
+    private static void readBigDecimal(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
         try {
             if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
                 BeanUtils.setProperty(obj, fieldName, new BigDecimal(cell.getNumericCellValue()));
@@ -264,7 +263,7 @@ public class Excel2BeanUtil {
         }
     }
 
-    private static void setDouble(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
+    private static void readDouble(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
         try {
             if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
                 BeanUtils.setProperty(obj, fieldName, cell.getNumericCellValue());
@@ -276,7 +275,7 @@ public class Excel2BeanUtil {
         }
     }
 
-    private static void setFloat(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
+    private static void readFloat(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
         try {
             if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
                 BeanUtils.setProperty(obj, fieldName, cell.getNumericCellValue());
@@ -288,7 +287,7 @@ public class Excel2BeanUtil {
         }
     }
 
-    private static void setInteger(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
+    private static void readInteger(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
         try {
             if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
                 BeanUtils.setProperty(obj, fieldName, cell.getNumericCellValue());
@@ -300,7 +299,7 @@ public class Excel2BeanUtil {
         }
     }
 
-    private static void setLong(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
+    private static void readLong(Object obj, String title, Cell cell, StringBuffer errors, String fieldName) {
         try {
             if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
                 BeanUtils.setProperty(obj, fieldName, cell.getNumericCellValue());

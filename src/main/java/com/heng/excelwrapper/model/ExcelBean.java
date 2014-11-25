@@ -1,4 +1,4 @@
-package com.baidu.excelwrapper.model;
+package com.heng.excelwrapper.model;
 
 /**
  * Created by zhangheng07 on 2014/8/22.

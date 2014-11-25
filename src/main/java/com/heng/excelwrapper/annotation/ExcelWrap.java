@@ -1,4 +1,4 @@
-package com.baidu.excelwrapper.annotation;
+﻿package com.heng.excelwrapper.annotation;
 
 
 import java.lang.annotation.Documented;
@@ -6,10 +6,8 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.HashMap;
-import java.util.Map;
 
-import com.baidu.excelwrapper.constant.TransferType;
+import com.heng.excelwrapper.constant.TransferType;
 
 /**
  * Created by zhangheng07 on 2014/8/22.
@@ -41,4 +39,7 @@ public @interface ExcelWrap {
     public String dateFormat() default  "yyyy-MM-dd HH:mm:ss";
 
     public String ListClass() default  "java.lang.String";
+
+    public int order() default 0;
+
 }
